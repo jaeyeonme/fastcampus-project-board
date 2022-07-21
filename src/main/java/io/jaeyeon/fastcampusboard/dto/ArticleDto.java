@@ -1,6 +1,7 @@
 package io.jaeyeon.fastcampusboard.dto;
 
 import io.jaeyeon.fastcampusboard.domain.Article;
+import io.jaeyeon.fastcampusboard.domain.UserAccount;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -44,13 +45,12 @@ public class ArticleDto {
         );
     }
 
-    public Article toEntity() {
+    public Article toEntity(UserAccount userAccount) {
         return Article.of(
-                userAccountDto.toEntity(),
+                userAccount,
                 title,
                 content,
                 hashtag
         );
     }
-
 }

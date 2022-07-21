@@ -25,6 +25,8 @@ public interface ArticleRepository extends JpaRepository<Article, Long>,
     Page<Article> findByUserAccount_NicknameContaining(String nickname, Pageable pageable);
     Page<Article> findByHashtag(String hashtag, Pageable pageable);
 
+    void deleteByIdAndUserAccount_UserId(Long articleId, String userid);
+
     @Override
     default void customize(QuerydslBindings bindings, QArticle root) {
         // 리스팅을 하지 않은 Properties를 true로 바꿔준다.

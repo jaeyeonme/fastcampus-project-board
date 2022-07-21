@@ -1,8 +1,11 @@
 package io.jaeyeon.fastcampusboard.controller;
 
+import io.jaeyeon.fastcampusboard.domain.type.FormStatus;
 import io.jaeyeon.fastcampusboard.domain.type.SearchType;
+import io.jaeyeon.fastcampusboard.dto.request.ArticleRequest;
 import io.jaeyeon.fastcampusboard.dto.response.ArticleResponse;
 import io.jaeyeon.fastcampusboard.dto.response.ArticleWithCommentsResponse;
+import io.jaeyeon.fastcampusboard.dto.security.BoardPrincipal;
 import io.jaeyeon.fastcampusboard.service.ArticleService;
 import io.jaeyeon.fastcampusboard.service.PaginationService;
 import lombok.RequiredArgsConstructor;
@@ -10,12 +13,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -49,14 +50,17 @@ public class ArticleController {
 
     @GetMapping("/{articleId}")
     public String articles(@PathVariable Long articleId, ModelMap map) {
-        ArticleWithCommentsResponse article = ArticleWithCommentsResponse.from(articleService.getArticle(articleId));
+        ArticleWithCommentsResponse article = ArticleWithCommentsResponse.from(articleService.getArticleWithComments(articleId));
+
         map.addAttribute("article", article);
         map.addAttribute("articleComment", article.getArticleCommentsResponse());
+        map.addAttribute("totalCount", articleService.getArticleCount());
+
         return "articles/detail";
     }
 
     @GetMapping("/search-hashtag")
-    public String searchHashtag(
+    public String searchArticleHashtag(
             @RequestParam(required = false) String searchValue,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             ModelMap map) {
@@ -65,12 +69,59 @@ public class ArticleController {
         List<Integer> barNumbers = paginationService.getPaginationBarNumbers(pageable.getPageNumber(), articles.getTotalPages());
         List<String> hashtags = articleService.getHashtags();
 
-
         map.addAttribute("articles", articles);
         map.addAttribute("hashtags", hashtags);
         map.addAttribute("paginationBarNumbers", barNumbers);
-//        map.addAttribute("searchTypes", SearchType.values());
+        map.addAttribute("searchType", SearchType.HASHTAG);
 
         return "articles/search-hashtag";
+    }
+
+    @GetMapping("/form")
+    public String articleForm(ModelMap map) {
+
+        map.addAttribute("formStatus", FormStatus.CREATE);
+
+        return "articles/form";
+    }
+
+    @PostMapping("/form")
+    public String postNewArticle(
+            @AuthenticationPrincipal BoardPrincipal boardPrincipal,
+            ArticleRequest articleRequest) {
+        articleService.saveArticle(articleRequest.toDto(boardPrincipal.toDto()));
+
+        return "redirect:/articles";
+    }
+
+    @GetMapping("/{articleId}/form")
+    public String updateArticleForm(@PathVariable Long articleId, ModelMap map) {
+        ArticleResponse article = ArticleResponse.from(articleService.getArticle(articleId));
+
+        map.addAttribute("article", article);
+        map.addAttribute("formStatus", FormStatus.UPDATE);
+
+        return "articles/form";
+    }
+
+    @PostMapping ("/{articleId}/form")
+    public String updateArticle(
+            @PathVariable Long articleId,
+            @AuthenticationPrincipal BoardPrincipal boardPrincipal,
+            ArticleRequest articleRequest
+    ) {
+        articleService.updateArticle(articleId, articleRequest.toDto(boardPrincipal.toDto()));
+
+        return "redirect:/articles/" + articleId;
+    }
+
+    @PostMapping ("/{articleId}/delete")
+    public String deleteArticle(
+            @PathVariable Long articleId,
+            @AuthenticationPrincipal BoardPrincipal boardPrincipal
+    ) {
+        articleService.deleteArticle(articleId, boardPrincipal.getUsername());
+
+        return "redirect:/articles";
     }
 }
